@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-cli:
+    name: CLI on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Verify runtime
+        run: node --version && npm --version
+      - name: Run tests
+        run: npm test
+
+  shell-tests:
+    name: Bash syntax and installer checks
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    steps:
+      - name: Install test tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends bash ca-certificates coreutils curl git xz-utils
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Bash syntax
+        run: bash -n scripts/install.sh scripts/uninstall.sh
+      - name: Installer help
+        run: bash scripts/install.sh --help
+
+  distro-detection:
+    name: Distro detection fixtures
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Validate fixtures
+        run: bash tests/distro-fixtures.sh

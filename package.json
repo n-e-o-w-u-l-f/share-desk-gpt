@@ -1,0 +1,16 @@
+{
+  "name": "share-desk-gpt",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-platform installer and diagnostic CLI foundation for share-desk-gpt.",
+  "bin": {
+    "share-desk-gpt": "bin/share-desk-gpt.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node tests/cli-smoke.mjs",
+    "doctor": "node bin/share-desk-gpt.js --doctor"
+  }
+}
