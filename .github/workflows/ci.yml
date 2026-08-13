@@ -2,58 +2,117 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'bin/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'install.cmd'
+      - 'uninstall.cmd'
+      - '.editorconfig'
+      - '.github/workflows/ci.yml'
   pull_request:
+    paths:
+      - 'bin/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'install.cmd'
+      - 'uninstall.cmd'
+      - '.editorconfig'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
-permissions:
-  contents: read
-
+# Cancel obsolete CI runs for the same branch/PR. A newer commit supersedes an
+# older one, so keeping both running only wastes capacity.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# CI never needs to write to the repository.
+permissions:
+  contents: read
+
 jobs:
-  node-cli:
-    name: CLI on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, windows-2025]
+  # Pull requests always use a fresh GitHub-hosted Linux VM. This is important
+  # because this repository is public: untrusted PR code must never execute on
+  # the private self-hosted machines.
+  linux-cli:
+    name: Linux CLI smoke test
+    runs-on: ${{ fromJSON(github.event_name == 'push' && '["self-hosted","linux"]' || '["ubuntu-24.04"]') }}
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
+
       - name: Verify runtime
         run: node --version && npm --version
-      - name: Run tests
+
+      - name: Run CLI smoke tests
+        run: npm test
+
+  windows-cli:
+    name: Windows CLI smoke test
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify runtime
+        shell: pwsh
+        run: node --version; npm --version
+
+      - name: Run CLI smoke tests
         run: npm test
 
   shell-tests:
     name: Bash syntax and installer checks
+    # Keep these tests on a disposable GitHub-hosted VM/container even on main.
+    # They intentionally validate the installer in a clean environment rather
+    # than mutating one of the persistent self-hosted machines.
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     container: ubuntu:24.04
     steps:
       - name: Install test tools
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends bash ca-certificates coreutils curl git xz-utils
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            bash ca-certificates coreutils curl git xz-utils
+
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Bash syntax
         run: bash -n scripts/install.sh scripts/uninstall.sh
+
       - name: Installer help
         run: bash scripts/install.sh --help
 
   distro-detection:
     name: Distro detection fixtures
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Validate fixtures
         run: bash tests/distro-fixtures.sh
