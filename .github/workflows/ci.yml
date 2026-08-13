@@ -22,7 +22,7 @@ jobs:
         os: [ubuntu-24.04, windows-2025]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -43,7 +43,7 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends bash ca-certificates coreutils curl git xz-utils
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Bash syntax
         run: bash -n scripts/install.sh scripts/uninstall.sh
       - name: Installer help
@@ -54,6 +54,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Validate fixtures
         run: bash tests/distro-fixtures.sh
